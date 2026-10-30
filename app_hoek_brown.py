@@ -7,10 +7,10 @@ from plotly.subplots import make_subplots
 # 1. CONFIGURACIÓN DE PÁGINA Y TEMA OSCURO
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="GeoDisk Pro | Selector Circular Multicapa",
+    page_title="GeoDisk Pro | Disco Selector Circular",
     page_icon="⛏️",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 st.markdown("""
@@ -20,9 +20,16 @@ st.markdown("""
         color: #e2e8f0;
     }
     div[data-testid="stMetricValue"] {
-        font-size: 28px !important;
+        font-size: 26px !important;
         font-weight: 700 !important;
         color: #00f2fe !important;
+    }
+    .custom-card {
+        background: #161f30;
+        border-left: 4px solid #00f2fe;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 15px;
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
@@ -31,7 +38,7 @@ st.markdown("""
         border-radius: 12px;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
+        height: 45px;
         border-radius: 8px;
         color: #94a3b8;
         font-weight: 600;
@@ -40,45 +47,39 @@ st.markdown("""
     .stTabs [aria-selected="true"] {
         background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%) !important;
         color: #ffffff !important;
-        box-shadow: 0px 4px 15px rgba(0, 198, 255, 0.4);
-    }
-    section[data-testid="stSidebar"] {
-        background-color: #111827 !important;
-        border-right: 1px solid #1e293b;
-    }
-    .custom-card {
-        background: #1e293b;
-        border-left: 4px solid #00f2fe;
-        padding: 16px;
-        border-radius: 8px;
-        margin-bottom: 15px;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. PANEL LATERAL: DISCO SELECTOR MULTICAPA (ENTRADAS)
+# 2. ENCABEZADO PRINCIPAL
 # ---------------------------------------------------------
-st.sidebar.title("🎛️ Geo-Slide Selector")
-st.sidebar.markdown("**UNAM - Ingeniería de Minas**")
-st.sidebar.markdown("---")
-
-st.sidebar.subheader("🔵 Layer 1: Calidad de Macizo (GSI)")
-gsi = st.sidebar.slider("GSI (Índice de Resistencia Geológica)", 10, 90, 55, 1)
-sigci = st.sidebar.slider("σci - Resistencia Intacta (MPa)", 1.0, 250.0, 65.0, 1.0)
-mi = st.sidebar.slider("mi (Constante Roca Intacta)", 5.0, 35.0, 15.0, 1.0)
-
-st.sidebar.subheader("⚪ Layer 2: Parámetros de Discontinuidad")
-jcs = st.sidebar.slider("JCS - Resistencia de Juntas (MPa)", 20.0, 250.0, 100.0, 5.0)
-jrc = st.sidebar.slider("JRC (Rugosidad de la Junta)", 0.0, 20.0, 8.0, 0.5)
-apertura = st.sidebar.selectbox("Apertura / Relleno", ["Cerrada (< 0.1 mm)", "Normal (0.5 - 5 mm)", "Relleno Suave (> 5 mm)"])
-
-st.sidebar.subheader("⚫ Layer 3: Propiedades Físico-Mecánicas")
-D = st.sidebar.slider("Factor de Perturbación (D)", 0.0, 1.0, 0.0, 0.05)
-peso_especifico = st.sidebar.slider("Peso Específico γ (kN/m³)", 20.0, 30.0, 26.5, 0.1)
+st.title("⚙️ GEODISK PRO : Multi-Layer Circular Geological Selector")
+st.markdown("##### *Escuela Profesional de Ingeniería de Minas - UNAM | Disco Selector Multicapa Interactivo*")
+st.markdown("---")
 
 # ---------------------------------------------------------
-# 3. CÁLCULOS GEOMECÁNICOS (HOEK-BROWN 2002)
+# 3. CONTROLES DEL DISCO CIRCULAR (ORGANIZADO EN 3 CAPAS)
+# ---------------------------------------------------------
+col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
+
+with col_ctrl1:
+    st.markdown("### 🟢 Layer 1: Calidad")
+    gsi = st.slider("GSI (Índice Geológico)", 10, 90, 55, 1)
+    sigci = st.slider("σci Resistencia Intacta (MPa)", 1.0, 250.0, 65.0, 1.0)
+
+with col_ctrl2:
+    st.markdown("### 🟡 Layer 2: Discontinuidades")
+    jcs = st.slider("JCS Resistencia Juntas (MPa)", 20.0, 250.0, 100.0, 5.0)
+    jrc = st.slider("JRC Rugosidad de Junta", 0.0, 20.0, 8.0, 0.5)
+
+with col_ctrl3:
+    st.markdown("### 🔴 Layer 3: Físico-Mecánicas")
+    D = st.slider("Factor de Perturbación (D)", 0.0, 1.0, 0.0, 0.05)
+    mi = st.slider("Constante mi (Roca)", 5.0, 35.0, 15.0, 1.0)
+
+# ---------------------------------------------------------
+# CÁLCULOS GEOMECÁNICOS (HOEK-BROWN 2002)
 # ---------------------------------------------------------
 mb = mi * np.exp((gsi - 100) / (28 - 14 * D))
 s = np.exp((gsi - 100) / (9 - 3 * D)) if gsi >= 25 else 0.0
@@ -89,68 +90,70 @@ sig_cm = sigci * ((mb + 4*s - a*(mb - 8*s)) * (mb/4 + s)**(a - 1)) / (2*(1 + a)*
 Erm = 25.0 * (0.02 + (1 - D/2)/(1 + np.exp((60 + 15*D - gsi)/11)))
 
 # ---------------------------------------------------------
-# 4. ENCABEZADO Y VISUALIZACIÓN DEL DISCO INTERACTIVO
+# 4. PESTAÑAS DINÁMICAS CON EL DISCO CENTRAL
 # ---------------------------------------------------------
-st.title("⚙️ GEODISK PRO : Disco Selector Multicapa Interactivo")
-st.caption("Simulador geomecánico basado en el criterio de Hoek-Brown y análisis multicapa de discontinuidades.")
-
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🎯 Disco Selector & Resultados", 
-    "📈 Envolvente & Círculo de Mohr", 
-    "🧪 Animación de Carga & Ruptura", 
-    "📑 Memoria de Cálculo"
+tab1, tab2, tab3 = st.tabs([
+    "🎯 Disco Selector & Resultados en Vivo", 
+    "📈 Envolvente de Falla & Mohr", 
+    "🧪 Simulación de Carga & Ruptura"
 ])
 
 with tab1:
-    col_d1, col_d2 = st.columns([1.2, 1])
+    col_vis1, col_vis2 = st.columns([1.3, 1])
     
-    with col_d1:
-        st.subheader("🔄 Representación Circular Multicapa")
-        st.markdown("""
-        <div class='custom-card'>
-        <b>Funcionamiento del Disco:</b> Al mover los parámetros en el panel lateral, las capas virtuales del disco 
-        interactúan para calcular de forma dinámica la resistencia global del macizo rocoso de la región Moquegua.
-        </div>
-        """, unsafe_allow_html=True)
+    with col_vis1:
+        st.subheader("🔄 Visualización Circular Multicapa del Disco")
         
-        # Gráfico polar simulando el disco selector multicapa
-        fig_disk = go.Figure(go.Barpolar(
-            r=[gsi, jcs, jrc*5, sigci/2.5],
-            theta=['Layer 1: GSI', 'Layer 2: JCS', 'Layer 2: JRC (x5)', 'Layer 3: σci (scaled)'],
-            marker=dict(color=['#00f2fe', '#0072ff', '#ff007f', '#ffea00'], line=dict(color="#ffffff", width=1)),
-            opacity=0.85
+        # Gráfico polar interactivo simulando el disco giratorio multicapa
+        fig_disk = go.Figure()
+        
+        # Anillos concéntricos del disco
+        fig_disk.add_trace(go.Barpolar(
+            r=[gsi, jcs, jrc*10, sigci/2.5],
+            theta=['Layer 1: GSI', 'Layer 2: JCS', 'Layer 2: JRC (scaled)', 'Layer 3: σci (scaled)'],
+            marker=dict(
+                color=['#00f2fe', '#0072ff', '#ffea00', '#ff007f'],
+                line=dict(color="#ffffff", width=1.5)
+            ),
+            opacity=0.9,
+            name="Capas del Disco"
         ))
+        
         fig_disk.update_layout(
             template="plotly_dark",
-            title="Diagrama Multicapa Concéntrico del Disco",
-            polar=dict(bgcolor="#0f172a", radialaxis=dict(visible=True, range=[0, 100])),
+            polar=dict(
+                bgcolor="#0f172a",
+                radialaxis=dict(visible=True, range=[0, 100], color="#94a3b8"),
+                angularaxis=dict(color="#ffffff", rotation=90, direction="clockwise")
+            ),
             paper_bgcolor="#0b0f19",
-            height=400
+            height=450,
+            margin=dict(t=20, b=20, l=20, r=20)
         )
         st.plotly_chart(fig_disk, use_container_width=True)
 
-    with col_d2:
-        st.subheader("⚡ Parámetros Resultantes del Disco")
+    with col_vis2:
+        st.subheader("⚡ Resultados Geomecánicos del Disco")
         
-        st.metric(label="Resistencia Global del Macizo (σcm)", value=f"{sig_cm:.2f} MPa", delta="Sostenimiento Sugerido")
-        st.metric(label="Módulo de Deformación (Erm)", value=f"{Erm:.2f} GPa", delta="Macizo Rocoso")
+        st.markdown("""
+        <div class='custom-card'>
+        <b>Estado del Macizo:</b> Los datos seleccionados en las capas del disco interactúan para arrojar 
+        los siguientes parámetros de resistencia y deformabilidad:
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.metric(label="Resistencia Global del Macizo (σcm)", value=f"{sig_cm:.2f} MPa")
+        st.metric(label="Módulo de Deformación (Erm)", value=f"{Erm:.2f} GPa")
         
         col_m1, col_m2 = st.columns(2)
-        col_m1.metric("Constante mb", f"{mb:.3f}")
-        col_m2.metric("Constante s", f"{s:.5f}")
+        col_m1.metric("mb", f"{mb:.3f}")
+        col_m2.metric("s", f"{s:.5f}")
         
-        st.markdown(f"""
-        * **Apertura de Juntas:** {apertura}
-        * **Peso Específico (γ):** {peso_especifico} kN/m³
-        * **Resistencia a la Tracción (σt):** {sig_t:.3f} MPa
-        """)
+        st.markdown(f"**Resistencia a la Tracción ($\sigma_t$):** `{sig_t:.3f} MPa`")
 
-# ---------------------------------------------------------
-# PESTAÑA 2: ENVOLVENTE Y MOHR
-# ---------------------------------------------------------
 with tab2:
     st.subheader("📊 Envolvente de Falla Hoek-Brown & Círculo de Mohr")
-    sig3_max = st.slider("σ3 Máximo de Confinamiento (MPa)", 1.0, 50.0, 15.0)
+    sig3_max = st.slider("Confinamiento Máximo σ3 (MPa)", 1.0, 50.0, 15.0)
     
     sig3_vals = np.linspace(sig_t, sig3_max, 200)
     sig1_vals = np.zeros_like(sig3_vals)
@@ -181,16 +184,12 @@ with tab2:
         title="Espacio de Esfuerzos Principales (σ3 - σ1)",
         xaxis_title="Esfuerzo Principal Menor σ3 (MPa)",
         yaxis_title="Esfuerzo Principal Mayor σ1 (MPa)",
-        height=480, paper_bgcolor="#0b0f19", plot_bgcolor="#0f172a"
+        height=450, paper_bgcolor="#0b0f19", plot_bgcolor="#0f172a"
     )
     st.plotly_chart(fig_mohr, use_container_width=True)
 
-# ---------------------------------------------------------
-# PESTAÑA 3: ANIMACIÓN DE CARGA Y MODOS DE RUPTURA
-# ---------------------------------------------------------
 with tab3:
-    st.subheader("🧪 Simulación de Carga y Modos de Ruptura de la Roca")
-    
+    st.subheader("🧪 Simulación de Carga y Dilatancia del Testigo")
     carga_pct = st.slider("Porcentaje de Carga Aplicada (% σci)", 10, 150, 80, 5)
     
     col_s1, col_s2 = st.columns(2)
@@ -204,7 +203,7 @@ with tab3:
         fig_st.add_trace(go.Scatter(x=def_axial, y=esfuerzo, name="Esfuerzo σ1", line=dict(color="#00f2fe", width=3)))
         fig_st.add_trace(go.Scatter(x=def_axial, y=dilatancia, name="Dilatancia ΔV/V", line=dict(color="#ffea00", width=2, dash="dash")), secondary_y=True)
         fig_st.add_trace(go.Scatter(x=[def_axial[idx_curr]], y=[esfuerzo[idx_curr]], mode="markers", marker=dict(color="#ff007f", size=12), name="Estado Actual"))
-        fig_st.update_layout(template="plotly_dark", title="Curva Esfuerzo-Deformación y Dilatancia", paper_bgcolor="#0b0f19", plot_bgcolor="#0f172a", height=380)
+        fig_st.update_layout(template="plotly_dark", title="Curva Esfuerzo-Deformación", paper_bgcolor="#0b0f19", plot_bgcolor="#0f172a", height=380)
         st.plotly_chart(fig_st, use_container_width=True)
 
     with col_s2:
@@ -227,18 +226,3 @@ with tab3:
             height=380, paper_bgcolor="#0b0f19", plot_bgcolor="#0f172a"
         )
         st.plotly_chart(fig_rock, use_container_width=True)
-
-# ---------------------------------------------------------
-# PESTAÑA 4: FÓRMULAS
-# ---------------------------------------------------------
-with tab4:
-    st.subheader("📋 Memoria de Cálculo Detallada")
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
-        st.latex(r"\sigma_1' = \sigma_3' + \sigma_{ci} \left( m_b \frac{\sigma_3'}{\sigma_{ci}} + s \right)^a")
-        st.latex(r"m_b = m_i \cdot \exp\left( \frac{GSI - 100}{28 - 14D} \right)")
-    with col_f2:
-        st.table({
-            "Parámetro": ["σci", "mb", "s", "a", "σt", "σcm", "Erm"],
-            "Valor": [f"{sigci} MPa", f"{mb:.3f}", f"{s:.5f}", f"{a:.4f}", f"{sig_t:.3f} MPa", f"{sig_cm:.2f} MPa", f"{Erm:.2f} GPa"]
-        })
